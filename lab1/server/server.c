@@ -40,10 +40,9 @@ int main(int argc, char **argv)
 	while (1) {
 		client_len = sizeof(client);
 		if ((n = recvfrom(sd, buf, MAXLEN, 0, (struct sockaddr *)&client, &client_len)) < 0) {
-		fprintf(stderr, "Can't receive datagram\n");
-		exit(1);
+		    fprintf(stderr, "Can't receive datagram\n");
+		    exit(1);
 		}
-		printf("%s \n", buf);
 
 		if (strcmp(buf, check_message) == 0) {
 			if (sendto(sd, yes_message, sizeof(yes_message), 0, (struct sockaddr *)&client, client_len) != sizeof(yes_message)) {

@@ -4,10 +4,14 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #define MAXLEN 4096
+
+long cal_delay(struct timeval t1, struct timeval t2);
 
 int main(int argc, char **argv)
 {
@@ -27,12 +31,7 @@ int main(int argc, char **argv)
 	bzero((char *)&server, sizeof(server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(port);
-	if ((hp = gethostbyaddr(host, sizeof(host), AF_INET)) == NULL) {
-		fprintf(stderr, "Can't get IP\n");
-		exit(1);
-	}
-	bcopy(hp->h_addr, (char *)&server.sin_addr, hp->h_length);
-	printf("%s\n", hp->h_name);
+    inet_pton(AF_INET, host, &(server.sin_addr));
 	bzero((char*)&client, sizeof(client));
 	client.sin_family = AF_INET;
 	client.sin_port = htons(0);
@@ -46,32 +45,43 @@ int main(int argc, char **argv)
 	char protocol[80], file_name[240];
 	char *sbuf;
 	char rbuf[MAXLEN];
+    struct timeval start, end;
 	printf("Please input ftp <file name> \n");
 	scanf("%79s %239s", protocol, file_name);
 	if (access(file_name, F_OK) != -1) {
-		sbuf = "ftp";
-		printf("sending %s\n", sbuf);
-		int sendByte;
-		if ((sendByte = sendto(sd, sbuf, sizeof(sbuf), 0, (struct sockaddr*)&server, server_len)) == -1) {
+	    sbuf = "ftp";
+        // start measuring
+        gettimeofday(&start, NULL);
+		if (sendto(sd, sbuf, sizeof(sbuf), 0, (struct sockaddr*)&server, server_len) == -1) {
 			fprintf(stderr, "sendto error\n");
 			exit(1);
 		}
-		printf("send %d\n", sendByte);	
 		 
 		if (recvfrom(sd, rbuf, MAXLEN, 0, (struct sockaddr *)&server, &server_len) < 0) {
-		fprintf(stderr, "recvfrom error\n");
-		exit(1);
+		    fprintf(stderr, "recvfrom error\n");
+		    exit(1);
 		}
+        gettimeofday(&end, NULL);
 		if (strcmp(rbuf, "yes") == 0) {
 			printf("A file transfer can start\n");
 		} else {
 			printf("Error from server\n");
 			exit(1);
 		}
+        printf("Round-trip delay = %ld ms.\n", cal_delay(start, end));
 	} else {
 		printf("File not exist\n");
 		exit(1);
 	}
 	close(sd);
 	return 0;
+}
+
+long cal_delay (struct timeval t1, struct timeval t2)
+{
+    long d;
+
+    d = (t2.tv_sec - t1.tv_sec) * 1000;
+    d += ((t2.tv_usec - t1.tv_usec + 500) / 1000);
+    return d;
 }
