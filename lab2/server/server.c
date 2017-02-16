@@ -7,6 +7,16 @@
 #include <unistd.h>
 
 #define MAXLEN 4096
+int
+checkSum(unsigned int size, char* buf) {
+	unsigned int cnt = 0;
+	char* it = buf;
+	while (*it != '\n') {
+		cnt++;
+		it++;
+	}
+	return size == cnt;
+}
 int main(int argc, char **argv)
 {
 	int sd, client_len, port, n;
@@ -15,7 +25,7 @@ int main(int argc, char **argv)
 	const char* check_message = "ftp";
 	const char* yes_message = "yes";
 	const char* no_message = "no";
-
+  const char* delim = ":";
 	if (argc == 2) {
 		port = atoi(argv[1]);
 	} else {
@@ -43,8 +53,24 @@ int main(int argc, char **argv)
 		    fprintf(stderr, "Can't receive datagram\n");
 		    exit(1);
 		}
-
-		if (strcmp(buf, check_message) == 0) {
+		printf("receive %d bytes\n", n);
+		unsigned int total_frag = atoi(strtok(buf, delim));
+		unsigned int frag_no = atoi(strtok(NULL, delim));
+		unsigned int size = atoi(strtok(NULL, delim));
+		char* filename = strtok(NULL, delim);
+		char* filedata = strtok(NULL, delim);
+		printf("%u %u %u %s %s\n", total_frag, frag_no, size, filename, filedata);
+		if (checkSum(size, filedata)) {
+			char ack_message[50];
+			sprintf(ack_message, "ACK %u", size);
+			if (sendto(sd, ack_message, sizeof(ack_message), 0, (struct sockaddr *)&client, client_len) != sizeof(yes_message)) {
+			fprintf(stderr, "Can't send datagram\n");
+			exit(1);
+			}
+		} else {
+			printf("no check\n");
+		}
+		/*if (strcmp(buf, check_message) == 0) {
 			if (sendto(sd, yes_message, sizeof(yes_message), 0, (struct sockaddr *)&client, client_len) != sizeof(yes_message)) {
 			fprintf(stderr, "Can't send datagram\n");
 			exit(1);
@@ -54,7 +80,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Can't send datagram\n");
 			exit(1);
 			}
-		}
+		}*/
 	}
 	close(sd);
 	return (0);

@@ -39,7 +39,7 @@ prepare_packet(struct packet p, char sendbuf[]) {
 int main(int argc, char **argv)
 {
 	if (argc != 3) {
-		fprintf(stderr, "Usage: %s [address] [port]", argv[0]);
+		fprintf(stderr, "Usage: %s [address] [port]\n", argv[0]);
 		exit(1);
 	}
 	char* host = argv[1];
@@ -80,11 +80,13 @@ int main(int argc, char **argv)
 			int npackets = sz / DATASIZE;
 			npackets = (sz % DATASIZE == 0 ? npackets : npackets + 1);
 			int cur_npacket = 1;
-			char databuf[DATASIZE];
+			char* databuf = (char*)malloc(sizeof(char) * DATASIZE);
 			size_t bytes_read;
-			while (bytes_read = fread(databuf, DATASIZE, 1, fp)) {
+			while (bytes_read = fread(databuf, 1, sz < DATASIZE ? sz : DATASIZE, fp)) {
+				printf("bytes read %lu\n", bytes_read);
 				struct packet p = build_packet(npackets, cur_npacket, bytes_read, file_name, databuf);
 				int buf_sz = prepare_packet(p, sbuf);
+				printf("sending buffer %s", sbuf);
 				if (sendto(sd, sbuf, buf_sz, 0, (struct sockaddr*)&server, server_len) == -1) {
 					fprintf(stderr, "sendto error\n");
 					exit(1);
