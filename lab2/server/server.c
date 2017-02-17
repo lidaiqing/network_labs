@@ -64,10 +64,6 @@ int main(int argc, char **argv)
 		if (frag_no == 1) {
 			fp = fopen(filename, "w");
 			printf("Creating file %s\n", filename);
-            int j;
-            for (j = 0; j < n; j++)
-                printf("%c", buf[j]);
-            printf("\n");
 		}
 		printf("Writing frag %u into file, size %u\n", frag_no, size);
 		fwrite(filedata, 1, size, fp);
