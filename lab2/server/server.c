@@ -53,15 +53,21 @@ int main(int argc, char **argv)
 		    exit(1);
 		}
 		printf("receive %d bytes\n", n);
-		unsigned int total_frag = atoi(strtok(buf, delim));
+        char* bufcpy = malloc(sizeof(buf));
+        memcpy(bufcpy, buf, sizeof(buf));
+		unsigned int total_frag = atoi(strtok(bufcpy, delim));
 		unsigned int frag_no = atoi(strtok(NULL, delim));
 		unsigned int size = atoi(strtok(NULL, delim));
 		char* filename = strtok(NULL, delim);
-		char* filedata = strtok(NULL, delim);
-		//printf("%u %u %u %s %s\n", total_frag, frag_no, size, filename, filedata);
+		char* filedata = buf + (n - size);
+		//if (frag_no == 1) printf("%u %u %u %s %s\n", total_frag, frag_no, size, filename, filedata);
 		if (frag_no == 1) {
 			fp = fopen(filename, "w");
 			printf("Creating file %s\n", filename);
+            int j;
+            for (j = 0; j < n; j++)
+                printf("%c", buf[j]);
+            printf("\n");
 		}
 		printf("Writing frag %u into file, size %u\n", frag_no, size);
 		fwrite(filedata, 1, size, fp);

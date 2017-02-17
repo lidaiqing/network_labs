@@ -33,7 +33,11 @@ build_packet(unsigned int _total_frag, unsigned int _frag_no, unsigned int _size
 }
 int
 prepare_packet(struct packet* p, char sendbuf[]) {
-	int sz = sprintf(sendbuf, "%u:%u:%d:%s:%s", p->total_frag, p->frag_no, p->size, p->filename, p->filedata);
+	int sz = 0;
+    sz += sprintf(sendbuf, "%u:%u:%u:%s:", p->total_frag, p->frag_no, p->size, p->filename);
+    int i;
+    memcpy(sendbuf + sz, p->filedata, p->size);
+    sz += p->size;
 	return sz;
 }
 int main(int argc, char **argv)
@@ -88,6 +92,12 @@ int main(int argc, char **argv)
 				struct packet *p = build_packet(npackets, cur_npacket, bytes_read, file_name, databuf);
 				int buf_sz = prepare_packet(p, sbuf);
 				printf("sending buffer size %d\n", buf_sz);
+                if (cur_npacket == 1) {
+                    int j;
+                    for (j = 0; j < buf_sz; j++)
+                        printf("%c", sbuf[j]);
+                    printf("\n");
+                }
 				if (sendto(sd, sbuf, buf_sz, 0, (struct sockaddr*)&server, server_len) == -1) {
 					fprintf(stderr, "sendto error\n");
 					exit(1);
