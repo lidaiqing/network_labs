@@ -19,21 +19,21 @@ struct packet {
 		char filedata[DATASIZE];
 };
 
-struct packet
-build_packet(unsigned int _total_frag, unsigned int _frag_no, unsigned int _size, char *_filename, char _filedata[]) {
-	struct packet p;
-	p.total_frag = _total_frag;
-	p.frag_no = _frag_no;
-	p.size = _size;
-	p.filename = _filename;
+struct packet*
+build_packet(unsigned int _total_frag, unsigned int _frag_no, unsigned int _size, char *_filename, char* _filedata) {
+	struct packet* p = (struct packet*)malloc(sizeof(struct packet));
+	p->total_frag = _total_frag;
+	p->frag_no = _frag_no;
+	p->size = _size;
+	p->filename = _filename;
 	int i;
 	for (i = 0; i < _size; i++)
-		p.filedata[i] = _filedata[i];
+		p->filedata[i] = _filedata[i];
 	return p;
 }
 int
-prepare_packet(struct packet p, char sendbuf[]) {
-	int sz = sprintf(sendbuf, "%u:%u:%d:%s:%s", p.total_frag, p.frag_no, p.size, p.filename, p.filedata);
+prepare_packet(struct packet* p, char sendbuf[]) {
+	int sz = sprintf(sendbuf, "%u:%u:%d:%s:%s", p->total_frag, p->frag_no, p->size, p->filename, p->filedata);
 	return sz;
 }
 int main(int argc, char **argv)
@@ -76,17 +76,18 @@ int main(int argc, char **argv)
 			fp = fopen(file_name, "r");
 			fseek(fp, 0L, SEEK_END);
 			int sz = ftell(fp);
+			printf("Total file size %d\n", sz);
 			rewind(fp);
 			int npackets = sz / DATASIZE;
 			npackets = (sz % DATASIZE == 0 ? npackets : npackets + 1);
-			int cur_npacket = 1;
+			unsigned int cur_npacket = 1;
 			char* databuf = (char*)malloc(sizeof(char) * DATASIZE);
 			size_t bytes_read;
-			while (bytes_read = fread(databuf, 1, sz < DATASIZE ? sz : DATASIZE, fp)) {
+			while (bytes_read = fread(databuf, 1, DATASIZE, fp)) {
 				printf("bytes read %lu\n", bytes_read);
-				struct packet p = build_packet(npackets, cur_npacket, bytes_read, file_name, databuf);
+				struct packet *p = build_packet(npackets, cur_npacket, bytes_read, file_name, databuf);
 				int buf_sz = prepare_packet(p, sbuf);
-				printf("sending buffer %s", sbuf);
+				printf("sending buffer size %d\n", buf_sz);
 				if (sendto(sd, sbuf, buf_sz, 0, (struct sockaddr*)&server, server_len) == -1) {
 					fprintf(stderr, "sendto error\n");
 					exit(1);
@@ -95,13 +96,15 @@ int main(int argc, char **argv)
 						fprintf(stderr, "recvfrom error\n");
 						exit(1);
 				}
-				char ackChecker[50];
-				sprintf(ackChecker, "ACK %u", cur_npacket);
+				char* ackChecker;
+				asprintf(&ackChecker, "ACK %u", bytes_read);
 				if (strcmp(ackChecker, rbuf) != 0) {
-					fprintf(stderr, "package lost!");
+					fprintf(stderr, "package lost\n");
+					exit(1);
 				}
 				cur_npacket++;
 			}
+			fclose(fp);
 	} else {
 		fprintf(stderr, "File not exist\n");
 		exit(1);

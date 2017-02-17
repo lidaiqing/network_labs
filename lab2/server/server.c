@@ -12,19 +12,18 @@ checkSum(unsigned int size, char* buf) {
 	unsigned int cnt = 0;
 	char* it = buf;
 	while (*it != '\n') {
+		//printf("%c\n", *it);
 		cnt++;
 		it++;
 	}
-	return size == cnt;
+	printf("buf size %u\n", cnt);
+	return size == (cnt + 1);
 }
 int main(int argc, char **argv)
 {
 	int sd, client_len, port, n;
 	char buf[MAXLEN];
 	struct sockaddr_in server, client;
-	const char* check_message = "ftp";
-	const char* yes_message = "yes";
-	const char* no_message = "no";
   const char* delim = ":";
 	if (argc == 2) {
 		port = atoi(argv[1]);
@@ -46,7 +45,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Can't bind name to socket\n");
 		exit(1);
 	}
-
+  FILE *fp;
 	while (1) {
 		client_len = sizeof(client);
 		if ((n = recvfrom(sd, buf, MAXLEN, 0, (struct sockaddr *)&client, &client_len)) < 0) {
@@ -59,29 +58,27 @@ int main(int argc, char **argv)
 		unsigned int size = atoi(strtok(NULL, delim));
 		char* filename = strtok(NULL, delim);
 		char* filedata = strtok(NULL, delim);
-		printf("%u %u %u %s %s\n", total_frag, frag_no, size, filename, filedata);
-		if (checkSum(size, filedata)) {
-			char ack_message[50];
-			sprintf(ack_message, "ACK %u", size);
-			if (sendto(sd, ack_message, sizeof(ack_message), 0, (struct sockaddr *)&client, client_len) != sizeof(yes_message)) {
-			fprintf(stderr, "Can't send datagram\n");
-			exit(1);
-			}
-		} else {
-			printf("no check\n");
+		//printf("%u %u %u %s %s\n", total_frag, frag_no, size, filename, filedata);
+		if (frag_no == 1) {
+			fp = fopen(filename, "w");
+			printf("Creating file %s\n", filename);
 		}
-		/*if (strcmp(buf, check_message) == 0) {
-			if (sendto(sd, yes_message, sizeof(yes_message), 0, (struct sockaddr *)&client, client_len) != sizeof(yes_message)) {
-			fprintf(stderr, "Can't send datagram\n");
-			exit(1);
-			}
-		} else {
-			if (sendto(sd, no_message, sizeof(no_message), 0, (struct sockaddr *)&client, client_len) != sizeof(no_message)) {
-			fprintf(stderr, "Can't send datagram\n");
-			exit(1);
-			}
-		}*/
-	}
+		printf("Writing frag %u into file, size %u\n", frag_no, size);
+		fwrite(filedata, 1, size, fp);
+		if (frag_no == total_frag) {
+			fseek(fp, 0L, SEEK_END);
+			int sz = ftell(fp);
+			printf("Total file size written %d\n", sz);
+			printf("Closing file\n");
+			fclose(fp);
+		}
+		char* ack_message;
+		asprintf(&ack_message, "ACK %u", size);
+		if (sendto(sd, ack_message, sizeof(ack_message), 0, (struct sockaddr *)&client, client_len) != sizeof(ack_message)) {
+		fprintf(stderr, "Can't send datagram\n");
+		exit(1);
+		}
+ }
 	close(sd);
 	return (0);
 }
