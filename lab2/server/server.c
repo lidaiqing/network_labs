@@ -46,6 +46,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
   FILE *fp;
+	int ack_counter = 0;
 	while (1) {
 		client_len = sizeof(client);
 		if ((n = recvfrom(sd, buf, MAXLEN, 0, (struct sockaddr *)&client, &client_len)) < 0) {
@@ -64,6 +65,11 @@ int main(int argc, char **argv)
 		if (frag_no == 1) {
 			fp = fopen(filename, "w");
 			printf("Creating file %s\n", filename);
+		}
+		if (frag_no == 2 && ack_counter < 5) {
+			printf("Ack counter for frag 2 is %d\n", ack_counter);
+			ack_counter++;
+			continue;
 		}
 		printf("Writing frag %u into file, size %u\n", frag_no, size);
 		fwrite(filedata, 1, size, fp);
