@@ -92,12 +92,6 @@ int main(int argc, char **argv)
 				struct packet *p = build_packet(npackets, cur_npacket, bytes_read, file_name, databuf);
 				int buf_sz = prepare_packet(p, sbuf);
 				printf("sending buffer size %d\n", buf_sz);
-                if (cur_npacket == 1) {
-                    int j;
-                    for (j = 0; j < buf_sz; j++)
-                        printf("%c", sbuf[j]);
-                    printf("\n");
-                }
 				if (sendto(sd, sbuf, buf_sz, 0, (struct sockaddr*)&server, server_len) == -1) {
 					fprintf(stderr, "sendto error\n");
 					exit(1);
