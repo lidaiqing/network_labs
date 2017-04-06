@@ -29,6 +29,9 @@ using namespace std;
 #define MESSAGE         10
 #define QUERY           11
 #define QU_ACK          12
+#define REG		13
+#define REG_ACK         14
+#define REG_NAK         15
 
 struct lab3message {
     unsigned int type;
@@ -54,6 +57,7 @@ void helper_func(void) {
     cout << "/leavesession" << endl;
     cout << "/createsession <session ID> " << endl;
     cout << "/list" << endl;
+    cout << "/register <userid> <password> <server-IP> <server-port>" << endl;
     cout << "/quit" << endl;
     cout << "<text>" << endl;
 }
@@ -91,7 +95,7 @@ void login_func(void) {
     printf("Connecting to %s(%s):%d\n", host, inet_ntoa(addr.sin_addr),port);
     if((sock=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))<0)
     	perror("socket");
-    	//setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
+    	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
     if(connect(sock,(struct sockaddr *)&addr, sizeof(addr))<0)
     	perror("connect");
 
@@ -101,7 +105,7 @@ void login_func(void) {
 
 void logout_func(void) {
     if (sock == -1) {
-	printf("You have already logged out!");
+	printf("You have already logged out!\n");
 	return;
     }
     lab3message message(EXIT, client_id.c_str(), client_id.size(), 0, 0);
@@ -111,7 +115,47 @@ void logout_func(void) {
     printf("Logout successful!\n");
 }
 
+void register_func(void) {
+    string password;
+    string server_IP;
+    string userID;
+    int server_port;
+    cin >> userID >> password >> server_IP >> server_port;
+	struct timeval tv;
+	tv.tv_sec = 2;  /* 30 Secs Timeout */
+	tv.tv_usec = 0;  // Not init'ing this can cause strange errors
+    int len, port=server_port;
+    const char *host=server_IP.c_str();
+    struct sockaddr_in addr;
+    struct hostent *host_entry;
+    host_entry = gethostbyname(host);
+
+    if (!host_entry){
+      fprintf(stderr,"Couldn't resolve host");
+      exit(0);
+    }
+
+    memset(&addr,0,sizeof(addr));
+    addr.sin_addr=*(struct in_addr *) host_entry->h_addr_list[0];
+    addr.sin_family=AF_INET;
+    addr.sin_port=htons(port);
+
+    printf("Connecting to %s(%s):%d\n", host, inet_ntoa(addr.sin_addr),port);
+    if((sock=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))<0)
+    	perror("socket");
+    	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv,sizeof(struct timeval));
+    if(connect(sock,(struct sockaddr *)&addr, sizeof(addr))<0)
+    	perror("connect");
+
+    lab3message message(REG, userID.c_str(), userID.size(), password.c_str(), password.size());
+    send(sock, &message, sizeof(message),0);
+}
+
 void joinsession_func(void) {
+    if (sock == -1) {
+	printf("You haven't logging yet!\n");
+	return;
+    }
     string session_id;
     cin >> session_id;
     lab3message message(JOIN, client_id.c_str(), client_id.size(), session_id.c_str(), session_id.size());
@@ -119,12 +163,20 @@ void joinsession_func(void) {
 }
 
 void leavesession_func(void) {
+       if (sock == -1) {
+	printf("You haven't logging yet!\n");
+	return;
+    }
   lab3message message(LEAVE_SESS, client_id.c_str(), client_id.size(), 0, 0);
   send(sock, &message, sizeof(message),0);
   printf("Leave current session successful!\n");
 }
 
 void createsession_func(void) {
+      if (sock == -1) {
+	printf("You haven't logging yet!\n");
+	return;
+    }
   string session_id;
   cin >> session_id;
   lab3message message(NEW_SESS, client_id.c_str(), client_id.size(), session_id.c_str(), session_id.size());
@@ -132,14 +184,22 @@ void createsession_func(void) {
 }
 
 void getlist_func(void) {
+      if (sock == -1) {
+	printf("You haven't logging yet!\n");
+	return;
+    }
   lab3message message(QUERY, client_id.c_str(), client_id.size(), 0, 0);
   send(sock, &message, sizeof(message),0);
 }
 
 void send_message_func(string input) {
+      if (sock == -1) {
+	printf("You haven't logging yet!\n");
+	return;
+    }
   lab3message message(MESSAGE, client_id.c_str(), client_id.size(), input.c_str(), input.size());
   send(sock, &message, sizeof(message),0);
-  printf("Send message: %s\n", input.c_str());
+  printf("You: %s\n", input.c_str());
 }
 
 void* recv_message_func(void*) {
@@ -147,6 +207,7 @@ void* recv_message_func(void*) {
     if (sock == -1) continue;
     lab3message recv_message;
     int len = recv(sock, &recv_message, sizeof(lab3message), 0);
+	if (len == -1) continue;
       if (recv_message.type == MESSAGE) {
         printf("Recv message: %s\n", recv_message.data);
       }
@@ -169,6 +230,14 @@ void* recv_message_func(void*) {
 	else if (recv_message.type == QU_ACK) {
       		printf("%s\n", recv_message.data);
     	}
+	else if (recv_message.type == REG_ACK) {
+		printf("Register ok!\n");
+		sock = -1;
+	}
+	else if (recv_message.type == REG_NAK) {
+		printf("Register fail!\n");
+		sock = -1;
+	}
 	    else {
 		printf("Operation fail, please try again!\n");
 	    }
@@ -191,6 +260,7 @@ void input(void) {
     else if (command == "/createsession") createsession_func();
     else if (command == "/list") getlist_func();
     else if (command == "/quit") quit_func();
+    else if (command == "/register") register_func();
     else send_message_func(command);
 }
 
