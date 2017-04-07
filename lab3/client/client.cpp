@@ -167,9 +167,11 @@ void leavesession_func(void) {
 	printf("You haven't logging yet!\n");
 	return;
     }
-  lab3message message(LEAVE_SESS, client_id.c_str(), client_id.size(), 0, 0);
+  string session_id;
+  cin >> session_id;
+  lab3message message(LEAVE_SESS, client_id.c_str(), client_id.size(), session_id.c_str(), session_id.size());
   send(sock, &message, sizeof(message),0);
-  printf("Leave current session successful!\n");
+  printf("Leave session %s successful!\n", session_id.c_str());
 }
 
 void createsession_func(void) {
@@ -188,6 +190,7 @@ void getlist_func(void) {
 	printf("You haven't logging yet!\n");
 	return;
     }
+
   lab3message message(QUERY, client_id.c_str(), client_id.size(), 0, 0);
   send(sock, &message, sizeof(message),0);
 }
@@ -209,7 +212,7 @@ void* recv_message_func(void*) {
     int len = recv(sock, &recv_message, sizeof(lab3message), 0);
 	if (len == -1) continue;
       if (recv_message.type == MESSAGE) {
-        printf("Recv message: %s\n", recv_message.data);
+        printf("%s\n", recv_message.data);
       }
 	else if (recv_message.type == LO_ACK) {
 		printf("Login successful!\n");
@@ -261,7 +264,12 @@ void input(void) {
     else if (command == "/list") getlist_func();
     else if (command == "/quit") quit_func();
     else if (command == "/register") register_func();
-    else send_message_func(command);
+    else {
+	string ms;
+	getline(cin, ms);
+	command += ms;
+	send_message_func(command);
+   }
 }
 
 int main(int argc, char **argv)

@@ -1,0 +1,4 @@
+1000795357 Daiqing Li
+1001506676 Tianxing Li
+
+In section 2, we added two new features. The first one is that it allows new users to register accounts by typing /register <userid> <password> <serverip> <port>. Once the server receive the message, it will add userid to the list, along with saving it to persistent memory (client_info.txt) . The second one is multi-session text conferencing. It allows users to join/create multiple sessions. Users can choose to broadcast message by @all + message or send message to a specific session by @sessionid + message. Users can also leave sessions selectively. All the functions are tested and demo'd to the TA.
